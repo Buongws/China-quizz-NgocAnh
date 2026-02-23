@@ -4,7 +4,10 @@ export const config = {
   port: Number(process.env.PORT || 4000),
   mongoUri: process.env.MONGODB_URI || '',
   jwtSecret: process.env.JWT_SECRET || '',
-  clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  clientOrigins: String(process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean),
   adminDefaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || '123456',
   adminUsernames: String(process.env.ADMIN_USERNAMES || process.env.ADMIN_EMAILS || '')
     .split(',')

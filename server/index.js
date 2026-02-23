@@ -12,11 +12,30 @@ import { scoreRoutes } from './routes/scoreRoutes.js';
 import { adminDashboardRoutes } from './routes/adminDashboardRoutes.js';
 
 const app = express();
+const allowedOrigins = new Set(
+  (config.clientOrigins.length ? config.clientOrigins : ['http://localhost:5173']).map((origin) =>
+    origin.replace(/\/+$/, ''),
+  ),
+);
 
 app.disable('x-powered-by');
 app.use(
   cors({
-    origin: config.clientOrigin,
+    origin(origin, callback) {
+      // Allow non-browser requests (curl, server-to-server, uptime checks).
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = origin.replace(/\/+$/, '');
+      if (allowedOrigins.has(normalizedOrigin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: false,
   }),
 );

@@ -263,6 +263,73 @@ router.post(
   }),
 );
 
+router.patch(
+  '/questions/:questionId',
+  authRequired,
+  adminRequired,
+  asyncHandler(async (req, res) => {
+    const questionId = String(req.params.questionId || '').trim();
+    const question = String(req.body?.question || '').trim();
+    const answer = String(req.body?.answer || '').trim();
+
+    if (!mongoose.isValidObjectId(questionId)) {
+      return res.status(400).json({ message: 'questionId không hợp lệ.' });
+    }
+
+    if (!question) {
+      return res.status(400).json({ message: 'Nghĩa tiếng Việt là bắt buộc.' });
+    }
+
+    if (!answer) {
+      return res.status(400).json({ message: 'Chữ Hán là bắt buộc.' });
+    }
+
+    if (question.length > 120) {
+      return res.status(400).json({ message: 'Nghĩa tiếng Việt tối đa 120 ký tự.' });
+    }
+
+    if (answer.length > 120) {
+      return res.status(400).json({ message: 'Chữ Hán tối đa 120 ký tự.' });
+    }
+
+    const existing = await Question.findOne({ _id: questionId, isActive: true });
+    if (!existing) {
+      return res.status(404).json({ message: 'Không tìm thấy từ vựng.' });
+    }
+
+    existing.question = question;
+    existing.answer = answer;
+    await existing.save();
+
+    return res.json({
+      question: serializeQuestion(existing),
+    });
+  }),
+);
+
+router.delete(
+  '/questions/:questionId',
+  authRequired,
+  adminRequired,
+  asyncHandler(async (req, res) => {
+    const questionId = String(req.params.questionId || '').trim();
+
+    if (!mongoose.isValidObjectId(questionId)) {
+      return res.status(400).json({ message: 'questionId không hợp lệ.' });
+    }
+
+    const existing = await Question.findOne({ _id: questionId, isActive: true });
+    if (!existing) {
+      return res.status(404).json({ message: 'Không tìm thấy từ vựng.' });
+    }
+
+    existing.isActive = false;
+    await existing.save();
+
+    return res.json({ success: true });
+  }),
+);
+
 router.get(
   '/students/:userId/scores',
   authRequired,

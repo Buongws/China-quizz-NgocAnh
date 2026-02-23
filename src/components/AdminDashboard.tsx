@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import styles from './AdminDashboard.module.css';
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import styles from "./AdminDashboard.module.css";
 import {
   api,
   type AdminDashboardResponse,
@@ -8,7 +8,7 @@ import {
   type ApiCategory,
   type ApiQuestion,
   type ApiUser,
-} from '../lib/api';
+} from "../lib/api";
 
 interface AdminDashboardProps {
   authToken: string;
@@ -21,7 +21,7 @@ interface AdminDashboardProps {
   onLogout: () => void;
 }
 
-type BulkImportMode = 'single-set' | 'multi-block';
+type BulkImportMode = "single-set" | "multi-block";
 
 interface ParsedImportWord {
   legacyId?: string;
@@ -37,12 +37,12 @@ interface ParsedImportSet {
 function formatDuration(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatDate(value: string | null): string {
   if (!value) {
-    return 'Chưa có';
+    return "Chưa có";
   }
 
   const date = new Date(value);
@@ -50,23 +50,26 @@ function formatDate(value: string | null): string {
     return value;
   }
 
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(date);
 }
 
-function normalizeImportWord(rawItem: unknown, index: number): ParsedImportWord {
-  if (!rawItem || typeof rawItem !== 'object') {
+function normalizeImportWord(
+  rawItem: unknown,
+  index: number,
+): ParsedImportWord {
+  if (!rawItem || typeof rawItem !== "object") {
     throw new Error(`Item #${index + 1} không hợp lệ.`);
   }
 
   const item = rawItem as Record<string, unknown>;
-  const question = String(item.question || '').trim();
-  const answer = String(item.answer || '').trim();
+  const question = String(item.question || "").trim();
+  const answer = String(item.answer || "").trim();
   const legacyIdRaw = item.id ?? item.legacyId;
   const legacyId =
     legacyIdRaw === undefined || legacyIdRaw === null
@@ -94,36 +97,42 @@ function parseJsonArrayWords(jsonText: string): ParsedImportWord[] {
   try {
     parsed = JSON.parse(jsonText);
   } catch {
-    throw new Error('JSON không hợp lệ.');
+    throw new Error("JSON không hợp lệ.");
   }
 
   if (!Array.isArray(parsed)) {
-    throw new Error('JSON phải là một mảng các item { question, answer }.');
+    throw new Error("JSON phải là một mảng các item { question, answer }.");
   }
 
   if (parsed.length === 0) {
-    throw new Error('Mảng JSON đang rỗng.');
+    throw new Error("Mảng JSON đang rỗng.");
   }
 
   return parsed.map((item, index) => normalizeImportWord(item, index));
 }
 
-function pickTitleFromPreamble(preamble: string, fallbackIndex: number): string {
+function pickTitleFromPreamble(
+  preamble: string,
+  fallbackIndex: number,
+): string {
   const lines = preamble
     .split(/\r?\n/)
     .map((part) => part.trim())
-    .filter((part) => part && part !== '.' && part !== '。');
+    .filter((part) => part && part !== "." && part !== "。");
   const line = lines.length > 0 ? lines[lines.length - 1] : undefined;
 
   if (!line) {
     return `Bo-tu-${fallbackIndex + 1}`;
   }
 
-  const cleaned = line.replace(/[：:]\s*$/, '').trim();
+  const cleaned = line.replace(/[：:]\s*$/, "").trim();
   return cleaned || `Bo-tu-${fallbackIndex + 1}`;
 }
 
-function extractBracketArray(source: string, startIndex: number): { json: string; endIndex: number } {
+function extractBracketArray(
+  source: string,
+  startIndex: number,
+): { json: string; endIndex: number } {
   let depth = 0;
   let inString = false;
   let escaped = false;
@@ -137,7 +146,7 @@ function extractBracketArray(source: string, startIndex: number): { json: string
         continue;
       }
 
-      if (ch === '\\') {
+      if (ch === "\\") {
         escaped = true;
         continue;
       }
@@ -153,9 +162,9 @@ function extractBracketArray(source: string, startIndex: number): { json: string
       continue;
     }
 
-    if (ch === '[') {
+    if (ch === "[") {
       depth += 1;
-    } else if (ch === ']') {
+    } else if (ch === "]") {
       depth -= 1;
       if (depth === 0) {
         return {
@@ -166,20 +175,20 @@ function extractBracketArray(source: string, startIndex: number): { json: string
     }
   }
 
-  throw new Error('Không tìm thấy dấu ] kết thúc mảng JSON.');
+  throw new Error("Không tìm thấy dấu ] kết thúc mảng JSON.");
 }
 
 function parseMultiBlockImportText(source: string): ParsedImportSet[] {
   const text = source.trim();
   if (!text) {
-    throw new Error('Nội dung import đang rỗng.');
+    throw new Error("Nội dung import đang rỗng.");
   }
 
   const sets: ParsedImportSet[] = [];
   let cursor = 0;
 
   while (cursor < text.length) {
-    const arrayStart = text.indexOf('[', cursor);
+    const arrayStart = text.indexOf("[", cursor);
     if (arrayStart === -1) break;
 
     const preamble = text.slice(cursor, arrayStart);
@@ -192,7 +201,7 @@ function parseMultiBlockImportText(source: string): ParsedImportSet[] {
   }
 
   if (sets.length === 0) {
-    throw new Error('Không tìm thấy block JSON nào để import.');
+    throw new Error("Không tìm thấy block JSON nào để import.");
   }
 
   return sets;
@@ -203,8 +212,12 @@ function StudentCard({ row }: { row: AdminDashboardStudentRow }) {
     <article className={styles.studentCard}>
       <div className={styles.studentHeader}>
         <div>
-          <p className={styles.studentName}>{row.student.displayName || 'Chưa đặt tên'}</p>
-          <p className={styles.studentEmail}>@{row.student.username || 'unknown'}</p>
+          <p className={styles.studentName}>
+            {row.student.displayName || "Chưa đặt tên"}
+          </p>
+          <p className={styles.studentEmail}>
+            @{row.student.username || "unknown"}
+          </p>
         </div>
         <span className={styles.badge}>{row.stats.totalSessions} lượt</span>
       </div>
@@ -220,11 +233,13 @@ function StudentCard({ row }: { row: AdminDashboardStudentRow }) {
         </div>
         <div className={styles.statBox}>
           <span>Gần nhất</span>
-          <strong>{row.stats.latestScore ?? '-'}</strong>
+          <strong>{row.stats.latestScore ?? "-"}</strong>
         </div>
       </div>
 
-      <p className={styles.lastPlayedText}>Lần chơi gần nhất: {formatDate(row.stats.lastPlayedAt)}</p>
+      <p className={styles.lastPlayedText}>
+        Lần chơi gần nhất: {formatDate(row.stats.lastPlayedAt)}
+      </p>
 
       {row.recentScores.length > 0 ? (
         <div className={styles.recentList}>
@@ -233,7 +248,8 @@ function StudentCard({ row }: { row: AdminDashboardStudentRow }) {
               <div className={styles.recentMain}>
                 <strong>{score.categoryTitle}</strong>
                 <span>
-                  {formatDate(score.createdAt)} • {score.mode === 'wrong-only' ? 'Ôn sai' : 'Thường'}
+                  {formatDate(score.createdAt)} •{" "}
+                  {score.mode === "wrong-only" ? "Ôn sai" : "Thường"}
                 </span>
               </div>
               <div className={styles.recentMeta}>
@@ -264,7 +280,7 @@ function CategoryChip({
     <button
       type="button"
       onClick={onClick}
-      className={`${styles.categoryChip} ${active ? styles.categoryChipActive : ''}`}
+      className={`${styles.categoryChip} ${active ? styles.categoryChipActive : ""}`}
     >
       <span>{category.title}</span>
       <small>{category.questionCount} từ</small>
@@ -284,25 +300,37 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
   const queryClient = useQueryClient();
 
-  const [keyword, setKeyword] = useState('');
-  const [categoryKeyword, setCategoryKeyword] = useState('');
-  const [selectedManageCategoryId, setSelectedManageCategoryId] = useState<string | null>(null);
+  const [keyword, setKeyword] = useState("");
+  const [categoryKeyword, setCategoryKeyword] = useState("");
+  const [selectedManageCategoryId, setSelectedManageCategoryId] = useState<
+    string | null
+  >(null);
 
-  const [newCategoryTitle, setNewCategoryTitle] = useState('');
-  const [newCategorySlug, setNewCategorySlug] = useState('');
-  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+  const [newCategoryTitle, setNewCategoryTitle] = useState("");
+  const [newCategorySlug, setNewCategorySlug] = useState("");
+  const [newCategoryDescription, setNewCategoryDescription] = useState("");
 
-  const [newQuestionText, setNewQuestionText] = useState('');
-  const [newAnswerText, setNewAnswerText] = useState('');
-  const [newLegacyId, setNewLegacyId] = useState('');
-  const [bulkImportMode, setBulkImportMode] = useState<BulkImportMode>('multi-block');
-  const [bulkImportTitle, setBulkImportTitle] = useState('');
-  const [bulkImportText, setBulkImportText] = useState('');
-  const [bulkImportProgress, setBulkImportProgress] = useState('');
-  const [bulkImportSummary, setBulkImportSummary] = useState('');
+  const [newQuestionText, setNewQuestionText] = useState("");
+  const [newAnswerText, setNewAnswerText] = useState("");
+  const [newLegacyId, setNewLegacyId] = useState("");
+  const [bulkImportMode, setBulkImportMode] =
+    useState<BulkImportMode>("multi-block");
+  const [bulkImportTitle, setBulkImportTitle] = useState("");
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [bulkImportProgress, setBulkImportProgress] = useState("");
+  const [bulkImportSummary, setBulkImportSummary] = useState("");
+  const [showCreateCategoryPanel, setShowCreateCategoryPanel] = useState(false);
+  const [showImportPanel, setShowImportPanel] = useState(false);
+  const [editableQuestions, setEditableQuestions] = useState<ApiQuestion[]>([]);
+  const [editableQuestionsCategoryId, setEditableQuestionsCategoryId] =
+    useState<string | null>(null);
+  const [questionDraftFeedback, setQuestionDraftFeedback] = useState("");
+  const [questionDraftFeedbackKind, setQuestionDraftFeedbackKind] = useState<
+    "success" | "error"
+  >("success");
 
   const categoriesQuery = useQuery({
-    queryKey: ['admin-content-categories', authToken],
+    queryKey: ["admin-content-categories", authToken],
     queryFn: () => api.getCategories(authToken),
   });
 
@@ -323,16 +351,21 @@ export function AdminDashboard({
   }, [manageableCategories, selectedManageCategoryId]);
 
   const selectedManageCategory =
-    manageableCategories.find((item) => item.id === selectedManageCategoryId) ?? null;
+    manageableCategories.find((item) => item.id === selectedManageCategoryId) ??
+    null;
 
   useEffect(() => {
-    if (bulkImportMode !== 'single-set') {
+    if (bulkImportMode !== "single-set") {
       return;
     }
 
     // Keep import title in sync with current selected category for quick import.
-    setBulkImportTitle(selectedManageCategory?.title || '');
-  }, [bulkImportMode, selectedManageCategory?.id, selectedManageCategory?.title]);
+    setBulkImportTitle(selectedManageCategory?.title || "");
+  }, [
+    bulkImportMode,
+    selectedManageCategory?.id,
+    selectedManageCategory?.title,
+  ]);
 
   const filteredManageableCategories = useMemo(() => {
     const q = categoryKeyword.trim().toLowerCase();
@@ -343,23 +376,24 @@ export function AdminDashboard({
     return manageableCategories.filter((category) => {
       const title = category.title.toLowerCase();
       const slug = category.slug.toLowerCase();
-      const description = (category.description || '').toLowerCase();
+      const description = (category.description || "").toLowerCase();
       return title.includes(q) || slug.includes(q) || description.includes(q);
     });
   }, [categoryKeyword, manageableCategories]);
 
   const categoryQuestionsQuery = useQuery({
-    queryKey: ['admin-content-questions', authToken, selectedManageCategoryId],
-    queryFn: () => api.getQuestions(authToken, selectedManageCategoryId as string),
+    queryKey: ["admin-content-questions", authToken, selectedManageCategoryId],
+    queryFn: () =>
+      api.getQuestions(authToken, selectedManageCategoryId as string),
     enabled: Boolean(selectedManageCategoryId),
   });
 
   const refreshContentQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin-content-categories'] });
-    queryClient.invalidateQueries({ queryKey: ['admin-content-questions'] });
-    queryClient.invalidateQueries({ queryKey: ['categories'] });
-    queryClient.invalidateQueries({ queryKey: ['questions'] });
-    queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ["admin-content-categories"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-content-questions"] });
+    queryClient.invalidateQueries({ queryKey: ["categories"] });
+    queryClient.invalidateQueries({ queryKey: ["questions"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
   };
 
   const createCategoryMutation = useMutation({
@@ -370,9 +404,9 @@ export function AdminDashboard({
         description: newCategoryDescription.trim() || undefined,
       }),
     onSuccess: (response) => {
-      setNewCategoryTitle('');
-      setNewCategorySlug('');
-      setNewCategoryDescription('');
+      setNewCategoryTitle("");
+      setNewCategorySlug("");
+      setNewCategoryDescription("");
       setSelectedManageCategoryId(response.category.id);
       refreshContentQueries();
       onRefresh();
@@ -388,11 +422,110 @@ export function AdminDashboard({
         legacyId: newLegacyId.trim() || undefined,
       }),
     onSuccess: () => {
-      setNewQuestionText('');
-      setNewAnswerText('');
-      setNewLegacyId('');
+      setNewQuestionText("");
+      setNewAnswerText("");
+      setNewLegacyId("");
       refreshContentQueries();
       onRefresh();
+    },
+  });
+
+  const saveQuestionDraftMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedManageCategoryId) {
+        throw new Error("Vui lòng chọn bộ từ.");
+      }
+
+      if (editableQuestionsCategoryId !== selectedManageCategoryId) {
+        throw new Error("Danh sách từ vựng chưa sẵn sàng, vui lòng thử lại.");
+      }
+
+      const originalById = new Map(
+        questionsInSelectedCategory.map((item) => [item.id, item] as const),
+      );
+      const draftIds = new Set<string>();
+      let updatedCount = 0;
+      let deletedCount = 0;
+
+      for (let index = 0; index < editableQuestions.length; index += 1) {
+        const item = editableQuestions[index];
+        const question = item.question.trim();
+        const answer = item.answer.trim();
+        const original = originalById.get(item.id);
+
+        draftIds.add(item.id);
+
+        if (!question) {
+          throw new Error(`Dòng #${index + 1} thiếu nghĩa tiếng Việt.`);
+        }
+
+        if (!answer) {
+          throw new Error(`Dòng #${index + 1} thiếu chữ Hán.`);
+        }
+
+        if (question.length > 120) {
+          throw new Error(
+            `Dòng #${index + 1}: nghĩa tiếng Việt tối đa 120 ký tự.`,
+          );
+        }
+
+        if (answer.length > 120) {
+          throw new Error(`Dòng #${index + 1}: chữ Hán tối đa 120 ký tự.`);
+        }
+
+        if (!original) {
+          continue;
+        }
+
+        if (question !== original.question || answer !== original.answer) {
+          await api.updateAdminQuestion(authToken, item.id, {
+            question,
+            answer,
+          });
+          updatedCount += 1;
+        }
+      }
+
+      for (const original of questionsInSelectedCategory) {
+        if (draftIds.has(original.id)) {
+          continue;
+        }
+        await api.deleteAdminQuestion(authToken, original.id);
+        deletedCount += 1;
+      }
+
+      return { updatedCount, deletedCount };
+    },
+    onMutate: () => {
+      setQuestionDraftFeedback("");
+    },
+    onSuccess: (result) => {
+      setEditableQuestions((prev) =>
+        prev.map((item) => ({
+          ...item,
+          question: item.question.trim(),
+          answer: item.answer.trim(),
+        })),
+      );
+
+      if (result.updatedCount === 0 && result.deletedCount === 0) {
+        setQuestionDraftFeedbackKind("success");
+        setQuestionDraftFeedback("Không có thay đổi để lưu.");
+        return;
+      }
+
+      setQuestionDraftFeedbackKind("success");
+      setQuestionDraftFeedback(
+        `Đã lưu thay đổi: sửa ${result.updatedCount} từ, xoá ${result.deletedCount} từ.`,
+      );
+      refreshContentQueries();
+      onRefresh();
+    },
+    onError: (error) => {
+      setQuestionDraftFeedbackKind("error");
+      setQuestionDraftFeedback(
+        error instanceof Error ? error.message : "Lưu thay đổi thất bại.",
+      );
     },
   });
 
@@ -400,22 +533,24 @@ export function AdminDashboard({
     mutationFn: async () => {
       const text = bulkImportText.trim();
       if (!text) {
-        throw new Error('Vui lòng dán nội dung JSON trước khi import.');
+        throw new Error("Vui lòng dán nội dung JSON trước khi import.");
       }
 
       let importedSetCount = 0;
       let importedWordCount = 0;
       let lastCreatedCategoryId: string | null = null;
 
-      if (bulkImportMode === 'single-set') {
+      if (bulkImportMode === "single-set") {
         const words = parseJsonArrayWords(text);
-        const importTitle = bulkImportTitle.trim() || selectedManageCategory?.title?.trim() || '';
+        const importTitle =
+          bulkImportTitle.trim() || selectedManageCategory?.title?.trim() || "";
         if (!importTitle) {
-          throw new Error('Vui lòng nhập Title bộ từ để import.');
+          throw new Error("Vui lòng nhập Title bộ từ để import.");
         }
 
         const existingCategory = manageableCategories.find(
-          (category) => category.title.trim().toLowerCase() === importTitle.toLowerCase(),
+          (category) =>
+            category.title.trim().toLowerCase() === importTitle.toLowerCase(),
         );
 
         let targetCategoryId = existingCategory?.id || null;
@@ -464,7 +599,11 @@ export function AdminDashboard({
           lastCreatedCategoryId = createdCategory.category.id;
           importedSetCount += 1;
 
-          for (let wordIndex = 0; wordIndex < setItem.items.length; wordIndex += 1) {
+          for (
+            let wordIndex = 0;
+            wordIndex < setItem.items.length;
+            wordIndex += 1
+          ) {
             const word = setItem.items[wordIndex];
             setBulkImportProgress(
               `Đang thêm từ ${wordIndex + 1}/${setItem.items.length} vào bộ \"${setItem.title}\"...`,
@@ -484,8 +623,8 @@ export function AdminDashboard({
       return { importedSetCount, importedWordCount, lastCreatedCategoryId };
     },
     onMutate: () => {
-      setBulkImportSummary('');
-      setBulkImportProgress('Chuẩn bị import...');
+      setBulkImportSummary("");
+      setBulkImportProgress("Chuẩn bị import...");
     },
     onSuccess: (result) => {
       refreshContentQueries();
@@ -495,12 +634,14 @@ export function AdminDashboard({
       setBulkImportSummary(
         `Import xong: ${result.importedSetCount} bộ từ, ${result.importedWordCount} từ vựng.`,
       );
-      setBulkImportProgress('');
+      setBulkImportProgress("");
       onRefresh();
     },
     onError: (error) => {
-      setBulkImportProgress('');
-      setBulkImportSummary(error instanceof Error ? error.message : 'Import thất bại.');
+      setBulkImportProgress("");
+      setBulkImportSummary(
+        error instanceof Error ? error.message : "Import thất bại.",
+      );
     },
   });
 
@@ -512,37 +653,160 @@ export function AdminDashboard({
     }
 
     return rows.filter((row) => {
-      const name = (row.student.displayName || '').toLowerCase();
-      const username = (row.student.username || '').toLowerCase();
+      const name = (row.student.displayName || "").toLowerCase();
+      const username = (row.student.username || "").toLowerCase();
       return name.includes(q) || username.includes(q);
     });
   }, [data?.students, keyword]);
 
   const createCategoryFeedback = createCategoryMutation.isPending
-    ? 'Đang tạo bộ từ...'
+    ? "Đang tạo bộ từ..."
     : createCategoryMutation.isError
       ? createCategoryMutation.error instanceof Error
         ? createCategoryMutation.error.message
-        : 'Tạo bộ từ thất bại.'
+        : "Tạo bộ từ thất bại."
       : createCategoryMutation.isSuccess
-        ? 'Đã tạo bộ từ.'
-        : '';
+        ? "Đã tạo bộ từ."
+        : "";
 
   const createQuestionFeedback = createQuestionMutation.isPending
-    ? 'Đang thêm từ...'
+    ? "Đang thêm từ..."
     : createQuestionMutation.isError
       ? createQuestionMutation.error instanceof Error
         ? createQuestionMutation.error.message
-        : 'Thêm từ thất bại.'
+        : "Thêm từ thất bại."
       : createQuestionMutation.isSuccess
-        ? 'Đã thêm từ vào bộ.'
-        : '';
+        ? "Đã thêm từ vào bộ."
+        : "";
 
   const bulkImportFeedback = bulkImportMutation.isPending
-    ? bulkImportProgress || 'Đang import...'
+    ? bulkImportProgress || "Đang import..."
     : bulkImportSummary;
 
-  const questionsInSelectedCategory = categoryQuestionsQuery.data?.questions ?? [];
+  const questionsInSelectedCategory =
+    categoryQuestionsQuery.data?.questions ?? [];
+
+  const editableQuestionsForSelectedCategory =
+    editableQuestionsCategoryId === selectedManageCategoryId
+      ? editableQuestions
+      : [];
+
+  const questionDraftStats = useMemo(() => {
+    if (
+      !selectedManageCategoryId ||
+      editableQuestionsCategoryId !== selectedManageCategoryId
+    ) {
+      return {
+        initialized: false,
+        updatedCount: 0,
+        deletedCount: 0,
+        changedCount: 0,
+      };
+    }
+
+    const originalById = new Map(
+      questionsInSelectedCategory.map((item) => [item.id, item] as const),
+    );
+    const draftIds = new Set<string>();
+    let updatedCount = 0;
+
+    for (const item of editableQuestions) {
+      draftIds.add(item.id);
+      const original = originalById.get(item.id);
+      if (!original) {
+        continue;
+      }
+
+      if (
+        item.question !== original.question ||
+        item.answer !== original.answer
+      ) {
+        updatedCount += 1;
+      }
+    }
+
+    let deletedCount = 0;
+    for (const original of questionsInSelectedCategory) {
+      if (!draftIds.has(original.id)) {
+        deletedCount += 1;
+      }
+    }
+
+    return {
+      initialized: true,
+      updatedCount,
+      deletedCount,
+      changedCount: updatedCount + deletedCount,
+    };
+  }, [
+    editableQuestions,
+    editableQuestionsCategoryId,
+    questionsInSelectedCategory,
+    selectedManageCategoryId,
+  ]);
+
+  useEffect(() => {
+    if (!selectedManageCategoryId) {
+      setEditableQuestions([]);
+      setEditableQuestionsCategoryId(null);
+      setQuestionDraftFeedback("");
+      return;
+    }
+
+    if (!categoryQuestionsQuery.isSuccess) {
+      return;
+    }
+
+    if (
+      editableQuestionsCategoryId === selectedManageCategoryId &&
+      questionDraftStats.changedCount > 0
+    ) {
+      return;
+    }
+
+    setEditableQuestions(
+      questionsInSelectedCategory.map((item) => ({ ...item })),
+    );
+    setEditableQuestionsCategoryId(selectedManageCategoryId);
+  }, [
+    categoryQuestionsQuery.isSuccess,
+    editableQuestionsCategoryId,
+    questionDraftStats.changedCount,
+    questionsInSelectedCategory,
+    selectedManageCategoryId,
+  ]);
+
+  const handleQuestionDraftFieldChange = (
+    questionId: string,
+    field: "question" | "answer",
+    value: string,
+  ) => {
+    setQuestionDraftFeedback("");
+    setEditableQuestions((prev) =>
+      prev.map((item) =>
+        item.id !== questionId
+          ? item
+          : field === "question"
+            ? { ...item, question: value }
+            : { ...item, answer: value },
+      ),
+    );
+  };
+
+  const handleRemoveQuestionDraftRow = (questionId: string) => {
+    setQuestionDraftFeedback("");
+    setEditableQuestions((prev) =>
+      prev.filter((item) => item.id !== questionId),
+    );
+  };
+
+  const handleResetQuestionDraft = () => {
+    setQuestionDraftFeedback("");
+    setEditableQuestions(
+      questionsInSelectedCategory.map((item) => ({ ...item })),
+    );
+    setEditableQuestionsCategoryId(selectedManageCategoryId);
+  };
 
   const handleCreateCategory = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -559,35 +823,43 @@ export function AdminDashboard({
     if (
       createCategoryMutation.isPending ||
       createQuestionMutation.isPending ||
-      bulkImportMutation.isPending
+      bulkImportMutation.isPending ||
+      saveQuestionDraftMutation.isPending
     ) {
       return;
     }
 
-    setKeyword('');
-    setCategoryKeyword('');
+    setKeyword("");
+    setCategoryKeyword("");
     setSelectedManageCategoryId(null);
 
-    setNewCategoryTitle('');
-    setNewCategorySlug('');
-    setNewCategoryDescription('');
+    setNewCategoryTitle("");
+    setNewCategorySlug("");
+    setNewCategoryDescription("");
 
-    setNewQuestionText('');
-    setNewAnswerText('');
-    setNewLegacyId('');
+    setNewQuestionText("");
+    setNewAnswerText("");
+    setNewLegacyId("");
 
-    setBulkImportMode('multi-block');
-    setBulkImportTitle('');
-    setBulkImportText('');
-    setBulkImportProgress('');
-    setBulkImportSummary('');
+    setBulkImportMode("multi-block");
+    setBulkImportTitle("");
+    setBulkImportText("");
+    setBulkImportProgress("");
+    setBulkImportSummary("");
+    setShowCreateCategoryPanel(true);
+    setShowImportPanel(false);
+    setEditableQuestions([]);
+    setEditableQuestionsCategoryId(null);
+    setQuestionDraftFeedback("");
+    setQuestionDraftFeedbackKind("success");
 
     createCategoryMutation.reset();
     createQuestionMutation.reset();
     bulkImportMutation.reset();
+    saveQuestionDraftMutation.reset();
 
     categoriesQuery.refetch();
-    queryClient.invalidateQueries({ queryKey: ['admin-content-questions'] });
+    queryClient.invalidateQueries({ queryKey: ["admin-content-questions"] });
     onRefresh();
   };
 
@@ -598,9 +870,12 @@ export function AdminDashboard({
           <p className={styles.eyebrow}>Admin Dashboard</p>
           <h1 className={styles.title}>Quản lý điểm học sinh</h1>
           <p className={styles.subtitle}>
-            Đăng nhập: <strong>@{currentUser.username || 'admin'}</strong> (role: admin)
+            Đăng nhập: <strong>@{currentUser.username || "admin"}</strong>{" "}
+            (role: admin)
           </p>
-          <p className={styles.devHint}>Tài khoản local mặc định: admin / 123456</p>
+          <p className={styles.devHint}>
+            Tài khoản local mặc định: admin / 123456
+          </p>
         </div>
         <div className={styles.topActions}>
           <button
@@ -611,12 +886,17 @@ export function AdminDashboard({
               isFetching ||
               createCategoryMutation.isPending ||
               createQuestionMutation.isPending ||
-              bulkImportMutation.isPending
+              bulkImportMutation.isPending ||
+              saveQuestionDraftMutation.isPending
             }
           >
-            {isFetching ? 'Đang tải...' : 'Làm mới (reset form)'}
+            {isFetching ? "Đang tải..." : "Làm mới (reset form)"}
           </button>
-          <button type="button" className={styles.logoutButton} onClick={onLogout}>
+          <button
+            type="button"
+            className={styles.logoutButton}
+            onClick={onLogout}
+          >
             Đăng xuất
           </button>
         </div>
@@ -643,73 +923,109 @@ export function AdminDashboard({
         </div>
       </section>
 
-      <section className={styles.manageCard} aria-label="Quản lý bộ từ và từ vựng">
+      <section
+        className={styles.manageCard}
+        aria-label="Quản lý bộ từ và từ vựng"
+      >
         <div className={styles.listHeader}>
           <div>
             <p className={styles.eyebrow}>Quản lý nội dung quiz</p>
-            <h2 className={styles.sectionTitle}>Tạo bộ từ và thêm từ vựng thủ công</h2>
+            <h2 className={styles.sectionTitle}>
+              Tạo bộ từ và thêm từ vựng thủ công
+            </h2>
           </div>
         </div>
 
-        <div className={styles.manageGrid}>
-          <div className={styles.panelCard}>
-            <h3 className={styles.panelTitle}>1. Tạo bộ từ mới</h3>
-            <form className={styles.formGrid} onSubmit={handleCreateCategory}>
-              <label className={styles.fieldLabelSmall}>
-                Tên bộ từ
-                <input
-                  className={styles.input}
-                  type="text"
-                  placeholder="Ví dụ: Đồ ăn"
-                  value={newCategoryTitle}
-                  onChange={(event) => setNewCategoryTitle(event.target.value)}
-                  required
-                  maxLength={80}
-                />
-              </label>
+        <div className={styles.panelToggleRow}>
+          <button
+            type="button"
+            className={styles.smallGhostButton}
+            onClick={() => setShowCreateCategoryPanel((prev) => !prev)}
+          >
+            {showCreateCategoryPanel
+              ? "Ẩn mục tạo bộ từ"
+              : "Hiện mục tạo bộ từ"}
+          </button>
+          <button
+            type="button"
+            className={styles.smallGhostButton}
+            onClick={() => setShowImportPanel((prev) => !prev)}
+          >
+            {showImportPanel ? "Ẩn Import JSON" : "Hiện Import JSON"}
+          </button>
+        </div>
 
-              <label className={styles.fieldLabelSmall}>
-                Slug (tuỳ chọn)
-                <input
-                  className={styles.input}
-                  type="text"
-                  placeholder="do-an"
-                  value={newCategorySlug}
-                  onChange={(event) => setNewCategorySlug(event.target.value)}
-                  maxLength={64}
-                />
-              </label>
+        <div
+          className={`${styles.manageGrid} ${!showCreateCategoryPanel ? styles.manageGridSingle : ""}`}
+        >
+          {showCreateCategoryPanel ? (
+            <div className={styles.panelCard}>
+              <h3 className={styles.panelTitle}>1. Tạo bộ từ mới</h3>
+              <form className={styles.formGrid} onSubmit={handleCreateCategory}>
+                <label className={styles.fieldLabelSmall}>
+                  Tên bộ từ
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="Ví dụ: Đồ ăn"
+                    value={newCategoryTitle}
+                    onChange={(event) =>
+                      setNewCategoryTitle(event.target.value)
+                    }
+                    required
+                    maxLength={80}
+                  />
+                </label>
 
-              <label className={styles.fieldLabelSmall}>
-                Mô tả (tuỳ chọn)
-                <textarea
-                  className={styles.textarea}
-                  placeholder="Mô tả ngắn cho bộ từ"
-                  value={newCategoryDescription}
-                  onChange={(event) => setNewCategoryDescription(event.target.value)}
-                  rows={3}
-                />
-              </label>
+                <label className={styles.fieldLabelSmall}>
+                  Slug (tuỳ chọn)
+                  <input
+                    className={styles.input}
+                    type="text"
+                    placeholder="do-an"
+                    value={newCategorySlug}
+                    onChange={(event) => setNewCategorySlug(event.target.value)}
+                    maxLength={64}
+                  />
+                </label>
 
-              <button
-                type="submit"
-                className={styles.primaryActionButton}
-                disabled={createCategoryMutation.isPending}
-              >
-                {createCategoryMutation.isPending ? 'Đang tạo...' : 'Tạo bộ từ'}
-              </button>
-            </form>
-            {createCategoryFeedback ? (
-              <p
-                className={
-                  createCategoryMutation.isError ? styles.errorText : styles.successText
-                }
-                role={createCategoryMutation.isError ? 'alert' : 'status'}
-              >
-                {createCategoryFeedback}
-              </p>
-            ) : null}
-          </div>
+                <label className={styles.fieldLabelSmall}>
+                  Mô tả (tuỳ chọn)
+                  <textarea
+                    className={styles.textarea}
+                    placeholder="Mô tả ngắn cho bộ từ"
+                    value={newCategoryDescription}
+                    onChange={(event) =>
+                      setNewCategoryDescription(event.target.value)
+                    }
+                    rows={3}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  className={styles.primaryActionButton}
+                  disabled={createCategoryMutation.isPending}
+                >
+                  {createCategoryMutation.isPending
+                    ? "Đang tạo..."
+                    : "Tạo bộ từ"}
+                </button>
+              </form>
+              {createCategoryFeedback ? (
+                <p
+                  className={
+                    createCategoryMutation.isError
+                      ? styles.errorText
+                      : styles.successText
+                  }
+                  role={createCategoryMutation.isError ? "alert" : "status"}
+                >
+                  {createCategoryFeedback}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className={styles.panelCard}>
             <div className={styles.panelHeaderInline}>
@@ -720,7 +1036,7 @@ export function AdminDashboard({
                 onClick={() => categoriesQuery.refetch()}
                 disabled={categoriesQuery.isFetching}
               >
-                {categoriesQuery.isFetching ? '...' : 'Refresh'}
+                {categoriesQuery.isFetching ? "..." : "Refresh"}
               </button>
             </div>
 
@@ -730,7 +1046,7 @@ export function AdminDashboard({
               <p className={styles.errorText} role="alert">
                 {categoriesQuery.error instanceof Error
                   ? categoriesQuery.error.message
-                  : 'Không tải được bộ từ.'}
+                  : "Không tải được bộ từ."}
               </p>
             ) : manageableCategories.length === 0 ? (
               <p className={styles.noteText}>Chưa có bộ từ nào.</p>
@@ -753,7 +1069,9 @@ export function AdminDashboard({
                 />
 
                 {filteredManageableCategories.length === 0 ? (
-                  <p className={styles.noteText}>Không tìm thấy bộ từ phù hợp.</p>
+                  <p className={styles.noteText}>
+                    Không tìm thấy bộ từ phù hợp.
+                  </p>
                 ) : (
                   <div className={styles.categoryChipScroller}>
                     <div className={styles.categoryChipGrid}>
@@ -762,7 +1080,9 @@ export function AdminDashboard({
                           key={category.id}
                           category={category}
                           active={category.id === selectedManageCategoryId}
-                          onClick={() => setSelectedManageCategoryId(category.id)}
+                          onClick={() =>
+                            setSelectedManageCategoryId(category.id)
+                          }
                         />
                       ))}
                     </div>
@@ -779,7 +1099,10 @@ export function AdminDashboard({
                   <span>{selectedManageCategory.questionCount} từ hiện có</span>
                 </div>
 
-                <form className={styles.formGrid} onSubmit={handleCreateQuestion}>
+                <form
+                  className={styles.formGrid}
+                  onSubmit={handleCreateQuestion}
+                >
                   <label className={styles.fieldLabelSmall}>
                     Nghĩa tiếng Việt
                     <input
@@ -787,7 +1110,9 @@ export function AdminDashboard({
                       type="text"
                       placeholder="Ví dụ: trời có gió"
                       value={newQuestionText}
-                      onChange={(event) => setNewQuestionText(event.target.value)}
+                      onChange={(event) =>
+                        setNewQuestionText(event.target.value)
+                      }
                       required
                       maxLength={120}
                     />
@@ -806,48 +1131,85 @@ export function AdminDashboard({
                     />
                   </label>
 
-                  <label className={styles.fieldLabelSmall}>
-                    Legacy ID (tuỳ chọn)
-                    <input
-                      className={styles.input}
-                      type="text"
-                      placeholder="windy-01"
-                      value={newLegacyId}
-                      onChange={(event) => setNewLegacyId(event.target.value)}
-                      maxLength={80}
-                    />
-                  </label>
-
                   <button
                     type="submit"
                     className={styles.primaryActionButton}
-                    disabled={!selectedManageCategoryId || createQuestionMutation.isPending}
+                    disabled={
+                      !selectedManageCategoryId ||
+                      createQuestionMutation.isPending
+                    }
                   >
-                    {createQuestionMutation.isPending ? 'Đang thêm...' : 'Thêm từ vào bộ'}
+                    {createQuestionMutation.isPending
+                      ? "Đang thêm..."
+                      : "Thêm từ vào bộ"}
                   </button>
                 </form>
 
                 {createQuestionFeedback ? (
                   <p
                     className={
-                      createQuestionMutation.isError ? styles.errorText : styles.successText
+                      createQuestionMutation.isError
+                        ? styles.errorText
+                        : styles.successText
                     }
-                    role={createQuestionMutation.isError ? 'alert' : 'status'}
+                    role={createQuestionMutation.isError ? "alert" : "status"}
                   >
                     {createQuestionFeedback}
                   </p>
                 ) : null}
 
                 <div className={styles.panelHeaderInline}>
-                  <h4 className={styles.subPanelTitle}>Từ hiện có trong bộ</h4>
-                  <button
-                    type="button"
-                    className={styles.smallGhostButton}
-                    onClick={() => categoryQuestionsQuery.refetch()}
-                    disabled={categoryQuestionsQuery.isFetching || !selectedManageCategoryId}
-                  >
-                    {categoryQuestionsQuery.isFetching ? '...' : 'Refresh'}
-                  </button>
+                  <div>
+                    <h4 className={styles.subPanelTitle}>
+                      Từ hiện có trong bộ
+                    </h4>
+                    {questionDraftStats.changedCount > 0 ? (
+                      <p className={styles.inlineTip}>
+                        Chưa lưu: sửa {questionDraftStats.updatedCount} từ, xoá{" "}
+                        {questionDraftStats.deletedCount} từ.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className={styles.inlineButtonGroup}>
+                    <button
+                      type="button"
+                      className={styles.smallGhostButton}
+                      onClick={handleResetQuestionDraft}
+                      disabled={
+                        saveQuestionDraftMutation.isPending ||
+                        !questionDraftStats.changedCount
+                      }
+                    >
+                      Hoàn tác
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.smallPrimaryButton}
+                      onClick={() => saveQuestionDraftMutation.mutate()}
+                      disabled={
+                        saveQuestionDraftMutation.isPending ||
+                        !selectedManageCategoryId ||
+                        categoryQuestionsQuery.isLoading ||
+                        !questionDraftStats.changedCount
+                      }
+                    >
+                      {saveQuestionDraftMutation.isPending
+                        ? "Đang lưu..."
+                        : "Lưu"}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.smallGhostButton}
+                      onClick={() => categoryQuestionsQuery.refetch()}
+                      disabled={
+                        categoryQuestionsQuery.isFetching ||
+                        !selectedManageCategoryId ||
+                        saveQuestionDraftMutation.isPending
+                      }
+                    >
+                      {categoryQuestionsQuery.isFetching ? "..." : "Refresh"}
+                    </button>
+                  </div>
                 </div>
 
                 {categoryQuestionsQuery.isLoading ? (
@@ -856,142 +1218,225 @@ export function AdminDashboard({
                   <p className={styles.errorText} role="alert">
                     {categoryQuestionsQuery.error instanceof Error
                       ? categoryQuestionsQuery.error.message
-                      : 'Không tải được từ vựng.'}
+                      : "Không tải được từ vựng."}
                   </p>
-                ) : questionsInSelectedCategory.length === 0 ? (
-                  <p className={styles.noteText}>Bộ này chưa có từ nào.</p>
+                ) : editableQuestionsForSelectedCategory.length === 0 ? (
+                  <p className={styles.noteText}>
+                    {questionDraftStats.changedCount > 0
+                      ? 'Danh sách nháp đang trống. Bấm "Lưu" để xoá toàn bộ từ trong bộ.'
+                      : "Bộ này chưa có từ nào."}
+                  </p>
                 ) : (
                   <div className={styles.wordList}>
-                    {questionsInSelectedCategory.map((item, index) => (
-                      <div key={item.id} className={styles.wordRow}>
+                    {editableQuestionsForSelectedCategory.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className={`${styles.wordRow} ${styles.wordRowEditable}`}
+                      >
                         <span className={styles.wordIndex}>{index + 1}</span>
-                        <div className={styles.wordPair}>
-                          <strong>{item.question}</strong>
-                          <span>{item.answer}</span>
+                        <div className={styles.wordEditorFields}>
+                          <label className={styles.wordFieldLabel}>
+                            Nghĩa tiếng Việt
+                            <input
+                              type="text"
+                              className={`${styles.input} ${styles.wordInput}`}
+                              value={item.question}
+                              onChange={(event) =>
+                                handleQuestionDraftFieldChange(
+                                  item.id,
+                                  "question",
+                                  event.target.value,
+                                )
+                              }
+                              maxLength={120}
+                              disabled={saveQuestionDraftMutation.isPending}
+                            />
+                          </label>
+                          <label className={styles.wordFieldLabel}>
+                            Chữ Hán
+                            <input
+                              type="text"
+                              className={`${styles.input} ${styles.wordInput}`}
+                              value={item.answer}
+                              onChange={(event) =>
+                                handleQuestionDraftFieldChange(
+                                  item.id,
+                                  "answer",
+                                  event.target.value,
+                                )
+                              }
+                              maxLength={120}
+                              disabled={saveQuestionDraftMutation.isPending}
+                            />
+                          </label>
+                          <small className={styles.wordMetaInline}>
+                            ID: {item.legacyId}
+                          </small>
                         </div>
-                        <small className={styles.wordMeta}>{item.legacyId}</small>
+                        <button
+                          type="button"
+                          className={styles.rowDangerButton}
+                          onClick={() => handleRemoveQuestionDraftRow(item.id)}
+                          disabled={saveQuestionDraftMutation.isPending}
+                        >
+                          Xoá
+                        </button>
                       </div>
                     ))}
                   </div>
                 )}
+
+                {questionDraftFeedback ? (
+                  <p
+                    className={
+                      questionDraftFeedbackKind === "error"
+                        ? styles.errorText
+                        : styles.successText
+                    }
+                    role={
+                      questionDraftFeedbackKind === "error" ? "alert" : "status"
+                    }
+                  >
+                    {questionDraftFeedback}
+                  </p>
+                ) : null}
               </>
             ) : null}
           </div>
         </div>
 
-        <div className={styles.importPanel}>
-          <div className={styles.panelHeaderInline}>
-            <div>
-              <h3 className={styles.panelTitle}>3. Import JSON nhanh (nhiều bộ từ)</h3>
-              <p className={styles.inlineTip}>
-                Hỗ trợ format nhiều block như bạn gửi: tiêu đề bộ từ + mảng JSON{' '}
-                <code>[...]</code> (mỗi item có <code>question</code> và <code>answer</code>).
-              </p>
+        {showImportPanel ? (
+          <div className={styles.importPanel}>
+            <div className={styles.panelHeaderInline}>
+              <div>
+                <h3 className={styles.panelTitle}>
+                  3. Import JSON nhanh (nhiều bộ từ)
+                </h3>
+                <p className={styles.inlineTip}>
+                  Hỗ trợ format nhiều block như bạn gửi: tiêu đề bộ từ + mảng
+                  JSON <code>[...]</code> (mỗi item có <code>question</code> và{" "}
+                  <code>answer</code>).
+                </p>
+              </div>
+              <button
+                type="button"
+                className={styles.smallGhostButton}
+                onClick={() => {
+                  setBulkImportText("");
+                  setBulkImportProgress("");
+                  setBulkImportSummary("");
+                }}
+                disabled={bulkImportMutation.isPending}
+              >
+                Xoá nội dung
+              </button>
             </div>
-            <button
-              type="button"
-              className={styles.smallGhostButton}
-              onClick={() => {
-                setBulkImportText('');
-                setBulkImportProgress('');
-                setBulkImportSummary('');
-              }}
-              disabled={bulkImportMutation.isPending}
+
+            <div
+              className={styles.modeSwitch}
+              role="tablist"
+              aria-label="Chọn chế độ import"
             >
-              Xoá nội dung
-            </button>
-          </div>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={bulkImportMode === "multi-block"}
+                className={`${styles.modeButton} ${bulkImportMode === "multi-block" ? styles.modeButtonActive : ""}`}
+                onClick={() => setBulkImportMode("multi-block")}
+                disabled={bulkImportMutation.isPending}
+              >
+                Nhiều bộ (title + JSON)
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={bulkImportMode === "single-set"}
+                className={`${styles.modeButton} ${bulkImportMode === "single-set" ? styles.modeButtonActive : ""}`}
+                onClick={() => setBulkImportMode("single-set")}
+                disabled={bulkImportMutation.isPending}
+              >
+                1 bộ (Title + JSON)
+              </button>
+            </div>
 
-          <div className={styles.modeSwitch} role="tablist" aria-label="Chọn chế độ import">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={bulkImportMode === 'multi-block'}
-              className={`${styles.modeButton} ${bulkImportMode === 'multi-block' ? styles.modeButtonActive : ''}`}
-              onClick={() => setBulkImportMode('multi-block')}
-              disabled={bulkImportMutation.isPending}
-            >
-              Nhiều bộ (title + JSON)
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={bulkImportMode === 'single-set'}
-              className={`${styles.modeButton} ${bulkImportMode === 'single-set' ? styles.modeButtonActive : ''}`}
-              onClick={() => setBulkImportMode('single-set')}
-              disabled={bulkImportMutation.isPending}
-            >
-              1 bộ (Title + JSON)
-            </button>
-          </div>
+            <label className={styles.fieldLabelSmall}>
+              Title bộ từ{" "}
+              {bulkImportMode === "single-set"
+                ? "(bắt buộc)"
+                : "(dùng cho mode 1 bộ)"}
+              <input
+                className={styles.input}
+                type="text"
+                placeholder="Ví dụ: Trạng thái cơ bản / 基本状态"
+                value={bulkImportTitle}
+                onChange={(event) => setBulkImportTitle(event.target.value)}
+                maxLength={80}
+                disabled={
+                  bulkImportMode !== "single-set" ||
+                  bulkImportMutation.isPending
+                }
+                required={bulkImportMode === "single-set"}
+              />
+            </label>
 
-          <label className={styles.fieldLabelSmall}>
-            Title bộ từ {bulkImportMode === 'single-set' ? '(bắt buộc)' : '(dùng cho mode 1 bộ)'}
-            <input
-              className={styles.input}
-              type="text"
-              placeholder="Ví dụ: Trạng thái cơ bản / 基本状态"
-              value={bulkImportTitle}
-              onChange={(event) => setBulkImportTitle(event.target.value)}
-              maxLength={80}
-              disabled={bulkImportMode !== 'single-set' || bulkImportMutation.isPending}
-              required={bulkImportMode === 'single-set'}
-            />
-          </label>
+            <label className={styles.fieldLabelSmall}>
+              Dán nội dung JSON
+              <textarea
+                className={`${styles.textarea} ${styles.textareaLarge}`}
+                placeholder={
+                  bulkImportMode === "multi-block"
+                    ? 'Trạng thái cơ bản\\n[ { \"question\": \"Mở\", \"answer\": \"开\" } ]\\n\\n物资与设备\\n[ ... ]'
+                    : '[ { \"id\": 1, \"question\": \"Mở / bật\", \"answer\": \"开\" } ]'
+                }
+                value={bulkImportText}
+                onChange={(event) => setBulkImportText(event.target.value)}
+                spellCheck={false}
+              />
+            </label>
 
-          <label className={styles.fieldLabelSmall}>
-            Dán nội dung JSON
-            <textarea
-              className={`${styles.textarea} ${styles.textareaLarge}`}
-              placeholder={
-                bulkImportMode === 'multi-block'
-                  ? 'Trạng thái cơ bản\\n[ { \"question\": \"Mở\", \"answer\": \"开\" } ]\\n\\n物资与设备\\n[ ... ]'
-                  : '[ { \"id\": 1, \"question\": \"Mở / bật\", \"answer\": \"开\" } ]'
-              }
-              value={bulkImportText}
-              onChange={(event) => setBulkImportText(event.target.value)}
-              spellCheck={false}
-            />
-          </label>
+            <div className={styles.importActions}>
+              <button
+                type="button"
+                className={styles.primaryActionButton}
+                onClick={() => bulkImportMutation.mutate()}
+                disabled={bulkImportMutation.isPending}
+              >
+                {bulkImportMutation.isPending
+                  ? "Đang import..."
+                  : "Import JSON"}
+              </button>
+              <button
+                type="button"
+                className={styles.smallGhostButton}
+                onClick={() =>
+                  bulkImportMode === "multi-block"
+                    ? setBulkImportText(
+                        'Trạng thái cơ bản / 基本状态\\n[\\n  { \"id\": 1, \"question\": \"Mở / bật\", \"answer\": \"开\" },\\n  { \"id\": 2, \"question\": \"Đóng / tắt\", \"answer\": \"关\" }\\n]\\n\\n物资与设备\\n[\\n  { \"id\": 1, \"question\": \"Nhíp, kẹp nhỏ\", \"answer\": \"镊子\" }\\n]',
+                      )
+                    : (setBulkImportTitle(
+                        (prev) => prev || "Trạng thái cơ bản / 基本状态",
+                      ),
+                      setBulkImportText(
+                        '[\\n  { \"id\": 1, \"question\": \"Mở / bật\", \"answer\": \"开\" },\\n  { \"id\": 2, \"question\": \"Đóng / tắt\", \"answer\": \"关\" }\\n]',
+                      ))
+                }
+                disabled={bulkImportMutation.isPending}
+              >
+                Chèn mẫu
+              </button>
+            </div>
 
-          <div className={styles.importActions}>
-            <button
-              type="button"
-              className={styles.primaryActionButton}
-              onClick={() => bulkImportMutation.mutate()}
-              disabled={bulkImportMutation.isPending}
-            >
-              {bulkImportMutation.isPending ? 'Đang import...' : 'Import JSON'}
-            </button>
-            <button
-              type="button"
-              className={styles.smallGhostButton}
-              onClick={() =>
-                bulkImportMode === 'multi-block'
-                  ? setBulkImportText(
-                      'Trạng thái cơ bản / 基本状态\\n[\\n  { \"id\": 1, \"question\": \"Mở / bật\", \"answer\": \"开\" },\\n  { \"id\": 2, \"question\": \"Đóng / tắt\", \"answer\": \"关\" }\\n]\\n\\n物资与设备\\n[\\n  { \"id\": 1, \"question\": \"Nhíp, kẹp nhỏ\", \"answer\": \"镊子\" }\\n]',
-                    )
-                  : (setBulkImportTitle((prev) => prev || 'Trạng thái cơ bản / 基本状态'),
-                    setBulkImportText(
-                      '[\\n  { \"id\": 1, \"question\": \"Mở / bật\", \"answer\": \"开\" },\\n  { \"id\": 2, \"question\": \"Đóng / tắt\", \"answer\": \"关\" }\\n]',
-                    ))
-              }
-              disabled={bulkImportMutation.isPending}
-            >
-              Chèn mẫu
-            </button>
-          </div>
+            {bulkImportMode === "single-set" ? (
+              <p className={styles.noteText}>
+                Gợi ý: nếu title trùng với bộ đã có thì hệ thống sẽ import vào
+                bộ đó; nếu chưa có sẽ tự tạo mới.
+              </p>
+            ) : null}
 
-          {bulkImportMode === 'single-set' ? (
-            <p className={styles.noteText}>
-              Gợi ý: nếu title trùng với bộ đã có thì hệ thống sẽ import vào bộ đó; nếu chưa có sẽ tự tạo mới.
-            </p>
-          ) : null}
-
-          <div className={styles.codeHint}>
-            <p className={styles.codeHintTitle}>Format hỗ trợ:</p>
-            <pre className={styles.codeBlock}>
-{`Tên bộ từ A
+            <div className={styles.codeHint}>
+              <p className={styles.codeHintTitle}>Format hỗ trợ:</p>
+              <pre className={styles.codeBlock}>
+                {`Tên bộ từ A
 [
   { "id": 1, "question": "Từ tiếng Việt", "answer": "汉字" }
 ]
@@ -1000,20 +1445,23 @@ Tên bộ từ B
 [
   { "question": "Từ khác", "answer": "词语" }
 ]`}
-            </pre>
-          </div>
+              </pre>
+            </div>
 
-          {bulkImportFeedback ? (
-            <p
-              className={
-                bulkImportMutation.isError ? styles.errorText : styles.successText
-              }
-              role={bulkImportMutation.isError ? 'alert' : 'status'}
-            >
-              {bulkImportFeedback}
-            </p>
-          ) : null}
-        </div>
+            {bulkImportFeedback ? (
+              <p
+                className={
+                  bulkImportMutation.isError
+                    ? styles.errorText
+                    : styles.successText
+                }
+                role={bulkImportMutation.isError ? "alert" : "status"}
+              >
+                {bulkImportFeedback}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className={styles.listCard} aria-label="Danh sách điểm học sinh">

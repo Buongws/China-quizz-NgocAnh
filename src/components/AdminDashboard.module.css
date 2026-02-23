@@ -114,6 +114,12 @@
   gap: 10px;
 }
 
+.panelToggleRow {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
 .panelCard {
   border-radius: 14px;
   border: 1px solid rgba(217, 226, 238, 0.88);
@@ -236,6 +242,29 @@
 .smallGhostButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.smallPrimaryButton {
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, #27a0eb, #167ec7);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 6px 10px;
+}
+
+.smallPrimaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inlineButtonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .categoryManagerBlock {
@@ -392,6 +421,55 @@
   grid-column: 2;
   color: var(--muted);
   font-size: 0.7rem;
+}
+
+.wordRowEditable {
+  gap: 8px;
+}
+
+.wordEditorFields {
+  grid-column: 2;
+  display: grid;
+  gap: 6px;
+}
+
+.wordFieldLabel {
+  display: grid;
+  gap: 4px;
+  color: #173150;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.wordInput {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+}
+
+.wordMetaInline {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.rowDangerButton {
+  grid-column: 2;
+  justify-self: end;
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 79, 68, 0.24);
+  background: rgba(212, 79, 68, 0.06);
+  color: #b62f2a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.rowDangerButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .modeSwitch {
@@ -685,6 +763,17 @@
     gap: 12px;
   }
 
+  .manageGridSingle {
+    grid-template-columns: 1fr;
+  }
+
+  .panelToggleRow {
+    grid-template-columns: repeat(2, max-content);
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
   .panelCard {
     padding: 12px;
     border-radius: 15px;
@@ -715,6 +804,23 @@
   .wordRow {
     grid-template-columns: auto 1fr auto;
     align-items: center;
+  }
+
+  .wordEditorFields {
+    grid-column: 2;
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+    gap: 8px;
+  }
+
+  .wordMetaInline {
+    justify-self: end;
+    margin-bottom: 6px;
+  }
+
+  .rowDangerButton {
+    grid-column: 3;
+    align-self: end;
   }
 
   .wordMeta {

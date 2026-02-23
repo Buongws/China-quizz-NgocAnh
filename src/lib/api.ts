@@ -57,6 +57,11 @@ export interface CreateAdminQuestionInput {
   legacyId?: string;
 }
 
+export interface UpdateAdminQuestionInput {
+  question: string;
+  answer: string;
+}
+
 export interface ApiScore {
   id: string;
   userId: string;
@@ -158,7 +163,7 @@ export function clearAuthToken() {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string | null;
 }
@@ -295,6 +300,21 @@ export const api = {
       method: 'POST',
       token,
       body: payload,
+    });
+  },
+
+  updateAdminQuestion(token: string, questionId: string, payload: UpdateAdminQuestionInput) {
+    return apiRequest<{ question: ApiQuestion }>(`/api/admin/dashboard/questions/${questionId}`, {
+      method: 'PATCH',
+      token,
+      body: payload,
+    });
+  },
+
+  deleteAdminQuestion(token: string, questionId: string) {
+    return apiRequest<{ success: boolean }>(`/api/admin/dashboard/questions/${questionId}`, {
+      method: 'DELETE',
+      token,
     });
   },
 };

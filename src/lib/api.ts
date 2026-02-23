@@ -163,6 +163,22 @@ interface RequestOptions {
   token?: string | null;
 }
 
+const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '')
+  .trim()
+  .replace(/\/+$/, '');
+
+function buildApiUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  if (!API_BASE_URL) {
+    return path;
+  }
+
+  return path.startsWith('/') ? `${API_BASE_URL}${path}` : `${API_BASE_URL}/${path}`;
+}
+
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers();
 
@@ -174,7 +190,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     headers.set('Authorization', `Bearer ${options.token}`);
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(buildApiUrl(path), {
     method: options.method || 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

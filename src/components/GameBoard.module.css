@@ -1,0 +1,84 @@
+.boardCard {
+  border-radius: 18px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: var(--shadow-md);
+}
+
+.languageTabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tabItem {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(31, 143, 218, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(31, 143, 218, 0.09),
+    rgba(31, 143, 218, 0.03)
+  );
+  color: #17436c;
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.column {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.emptyState {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 18px 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(95, 113, 135, 0.35);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .boardCard {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .languageTabs {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .tabItem {
+    min-height: 48px;
+    font-size: 1rem;
+    border-radius: 13px;
+  }
+
+  .columns {
+    gap: 12px;
+  }
+
+  .column {
+    gap: 12px;
+  }
+}

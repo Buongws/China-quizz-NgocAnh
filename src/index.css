@@ -1,0 +1,76 @@
+:root {
+  color-scheme: light;
+  --bg-a: #eef5ff;
+  --bg-b: #fff6ea;
+  --surface: rgba(255, 255, 255, 0.86);
+  --surface-strong: rgba(255, 255, 255, 0.96);
+  --border: #d9e2ee;
+  --text: #102033;
+  --muted: #5f7187;
+  --brand: #1f8fda;
+  --brand-soft: #eaf6ff;
+  --success: #148c59;
+  --success-soft: #e9fbf2;
+  --danger: #d44f44;
+  --danger-soft: #fff1ef;
+  --shadow-sm: 0 3px 10px rgba(10, 37, 64, 0.08);
+  --shadow-md: 0 10px 28px rgba(10, 37, 64, 0.12);
+  --radius: 16px;
+  --radius-sm: 12px;
+  font-family: "Be Vietnam Pro", "Noto Sans SC", "Segoe UI", "Helvetica Neue",
+    system-ui, sans-serif;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(31, 143, 218, 0.12), transparent 42%),
+    radial-gradient(circle at 92% 0%, rgba(255, 163, 85, 0.15), transparent 36%),
+    linear-gradient(180deg, var(--bg-a) 0%, var(--bg-b) 100%);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: rgba(31, 143, 218, 0.16);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(31, 143, 218, 0.35);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,121 @@
+.cardButton {
+  position: relative;
+  width: 100%;
+  min-height: 62px;
+  padding: 12px 34px 12px 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cardButton:not(:disabled):active {
+  transform: translateY(1px) scale(0.995);
+}
+
+.label {
+  display: block;
+  width: 100%;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.sideLeft .label {
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.sideRight .label {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.selected {
+  border-color: rgba(31, 143, 218, 0.85);
+  background: var(--brand-soft);
+  box-shadow:
+    0 0 0 3px rgba(31, 143, 218, 0.14),
+    var(--shadow-sm);
+}
+
+.correct {
+  border-color: rgba(20, 140, 89, 0.9);
+  background: var(--success-soft);
+  color: #0d5b3b;
+}
+
+.wrong {
+  border-color: rgba(212, 79, 68, 0.88);
+  background: var(--danger-soft);
+  color: #962f2a;
+  animation: shake 250ms linear;
+}
+
+.disabled {
+  cursor: not-allowed;
+}
+
+.checkBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--success);
+  box-shadow: 0 2px 8px rgba(20, 140, 89, 0.25);
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 640px) {
+  .cardButton {
+    min-height: 64px;
+    padding: 12px 38px 12px 14px;
+    border-radius: 15px;
+  }
+
+  .sideLeft .label {
+    font-size: 1.05rem;
+  }
+
+  .sideRight .label {
+    font-size: 1.22rem;
+  }
+}

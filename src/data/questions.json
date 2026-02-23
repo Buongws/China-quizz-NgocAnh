@@ -1,0 +1,12 @@
+[
+  { "id": 1, "question": "ngày nắng", "answer": "晴天" },
+  { "id": 2, "question": "trời âm u", "answer": "阴天" },
+  { "id": 3, "question": "nóng", "answer": "热" },
+  { "id": 4, "question": "mùa xuân", "answer": "春天" },
+  { "id": 5, "question": "mùa hè", "answer": "夏天" },
+  { "id": 6, "question": "nhiều mây", "answer": "多云" },
+  { "id": 7, "question": "âm dưới 0", "answer": "零下" },
+  { "id": 8, "question": "đắt", "answer": "贵" },
+  { "id": 9, "question": "thời tiết", "answer": "天气" },
+  { "id": 10, "question": "trời mưa", "answer": "下雨" }
+]

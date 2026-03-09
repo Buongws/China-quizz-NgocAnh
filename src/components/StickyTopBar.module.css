@@ -1,9 +1,11 @@
 .stickyWrap {
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
   z-index: 30;
   padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
   margin-bottom: 10px;
+  padding-bottom: 30px;
 }
 
 .panel {
@@ -11,6 +13,7 @@
   border: 1px solid rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.75);
   box-shadow: var(--shadow-md);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   padding: 10px;
   display: grid;
@@ -65,7 +68,9 @@
   box-shadow:
     0 6px 18px rgba(23, 126, 199, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .primaryButton:not(:disabled):active {

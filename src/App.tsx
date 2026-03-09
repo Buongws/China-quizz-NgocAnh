@@ -32,6 +32,12 @@ const SCORE_WRONG = -1;
 const QUIZ_PAIRS_PER_ROUND = 10;
 
 type AuthMode = "login" | "register";
+type QuestionGroup = {
+  index: number;
+  label: string;
+  rangeLabel: string;
+  items: QuizItem[];
+};
 
 function getWrongIdsStorageKey(userId: string) {
   return `${WRONG_IDS_STORAGE_PREFIX}:${userId}`;
@@ -75,13 +81,35 @@ function writeWrongIdsForUser(userId: string | null, ids: string[]) {
 }
 
 function normalizeQuestions(rawItems: ApiQuestion[]): QuizItem[] {
-  return rawItems
-    .map((item) => ({
+  const normalized: QuizItem[] = [];
+  const seenIds = new Set<string>();
+  const seenPairs = new Set<string>();
+
+  for (const item of rawItems) {
+    const normalizedItem = {
       id: String(item.id),
       question: String(item.question || "").trim(),
       answer: String(item.answer || "").trim(),
-    }))
-    .filter((item) => item.question.length > 0 && item.answer.length > 0);
+    };
+
+    if (
+      normalizedItem.question.length === 0 ||
+      normalizedItem.answer.length === 0
+    ) {
+      continue;
+    }
+
+    const pairKey = `${normalizedItem.question}\u0000${normalizedItem.answer}`;
+    if (seenIds.has(normalizedItem.id) || seenPairs.has(pairKey)) {
+      continue;
+    }
+
+    seenIds.add(normalizedItem.id);
+    seenPairs.add(pairKey);
+    normalized.push(normalizedItem);
+  }
+
+  return normalized;
 }
 
 function addUniqueIds(currentIds: string[], idsToAdd: string[]): string[] {
@@ -112,6 +140,98 @@ function formatScoreTime(value: string): string {
 
 function isUnauthorizedError(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 401;
+}
+
+function buildQuestionCycleKey({
+  categoryId,
+  practiceWrongOnly,
+  pool,
+}: {
+  categoryId: string | null;
+  practiceWrongOnly: boolean;
+  pool: QuizItem[];
+}) {
+  return `${categoryId ?? "none"}:${practiceWrongOnly ? "wrong-only" : "all"}:${pool.map((item) => item.id).join("|")}`;
+}
+
+function getNextSessionQuestionsFromPool({
+  pool,
+  previousRemaining,
+  roundSize,
+}: {
+  pool: QuizItem[];
+  previousRemaining: QuizItem[];
+  roundSize: number;
+}) {
+  const limitedRoundSize = Math.min(roundSize, pool.length);
+  if (limitedRoundSize === 0) {
+    return {
+      nextSessionQuestions: [],
+      nextRemaining: [],
+    };
+  }
+
+  if (pool.length <= limitedRoundSize) {
+    return {
+      nextSessionQuestions: shuffleArray(pool).slice(0, limitedRoundSize),
+      nextRemaining: [],
+    };
+  }
+
+  let remaining =
+    previousRemaining.length > 0 ? previousRemaining : shuffleArray(pool);
+  let nextSessionQuestions = remaining.slice(0, limitedRoundSize);
+  let nextRemaining = remaining.slice(limitedRoundSize);
+
+  if (nextSessionQuestions.length < limitedRoundSize) {
+    const selectedIds = new Set(nextSessionQuestions.map((item) => item.id));
+    const freshCycle = shuffleArray(pool);
+    const topUpItems: QuizItem[] = [];
+    const freshRemaining: QuizItem[] = [];
+
+    for (const item of freshCycle) {
+      if (
+        topUpItems.length < limitedRoundSize - nextSessionQuestions.length &&
+        !selectedIds.has(item.id)
+      ) {
+        topUpItems.push(item);
+        selectedIds.add(item.id);
+        continue;
+      }
+
+      freshRemaining.push(item);
+    }
+
+    nextSessionQuestions = [...nextSessionQuestions, ...topUpItems];
+    nextRemaining = freshRemaining;
+  }
+
+  return {
+    nextSessionQuestions,
+    nextRemaining,
+  };
+}
+
+function buildQuestionGroups(
+  items: QuizItem[],
+  groupSize: number,
+): QuestionGroup[] {
+  const groups: QuestionGroup[] = [];
+
+  for (let index = 0; index < items.length; index += groupSize) {
+    const groupNumber = Math.floor(index / groupSize) + 1;
+    const start = index + 1;
+    const end = Math.min(index + groupSize, items.length);
+
+    groups.push({
+      index: groupNumber - 1,
+      label: `Nhóm ${groupNumber}`,
+      rangeLabel: `Câu ${start}-${end}`,
+      items: items.slice(index, index + groupSize),
+    });
+  }
+
+  return groups;
 }
 
 function AuthGateCard({
@@ -338,6 +458,64 @@ function CategoryTabs({
   );
 }
 
+function QuestionGroupTabs({
+  groups,
+  selectedGroupIndex,
+  onSelect,
+}: {
+  groups: QuestionGroup[];
+  selectedGroupIndex: number;
+  onSelect: (groupIndex: number) => void;
+}) {
+  if (groups.length === 0) {
+    return null;
+  }
+
+  const selectedGroup = groups[selectedGroupIndex] ?? groups[0];
+
+  return (
+    <section className={styles.categoryCard} aria-label="Chọn nhóm câu hỏi">
+      <div className={styles.sectionHeaderRow}>
+        <div>
+          <p className={styles.sectionEyebrow}>Bước 4 / Chọn nhóm</p>
+          <h2 className={styles.sectionTitle}>Tab nhóm 10 câu</h2>
+        </div>
+      </div>
+
+      <div
+        className={styles.categoryTabs}
+        role="tablist"
+        aria-label="Danh sách nhóm câu hỏi"
+      >
+        {groups.map((group) => {
+          const active = group.index === selectedGroupIndex;
+          return (
+            <button
+              key={group.label}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`${styles.categoryTab} ${active ? styles.categoryTabActive : ""}`}
+              onClick={() => onSelect(group.index)}
+            >
+              <span className={styles.categoryTabTitle}>{group.label}</span>
+              <span className={styles.categoryTabMeta}>
+                {group.rangeLabel} • {group.items.length} câu
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className={styles.categoryDescription}>
+        {groups.length === 1
+          ? `Chủ đề này hiện có ${selectedGroup.items.length} câu, nên chỉ có 1 nhóm.`
+          : `${selectedGroup.label} đang chọn: ${selectedGroup.rangeLabel}, gồm ${selectedGroup.items.length} câu.`}
+      </p>
+    </section>
+  );
+}
+
 export default function App() {
   const queryClient = useQueryClient();
 
@@ -349,6 +527,8 @@ export default function App() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
+  const [selectedQuestionGroupIndex, setSelectedQuestionGroupIndex] =
+    useState(0);
   const [practiceWrongOnly, setPracticeWrongOnly] = useState(false);
   const [wrongHistoryIds, setWrongHistoryIds] = useState<string[]>([]);
 
@@ -369,6 +549,8 @@ export default function App() {
   const resolveTimeoutRef = useRef<number | null>(null);
   const sessionCounterRef = useRef(0);
   const submittedSessionKeysRef = useRef<Set<number>>(new Set());
+  const questionCycleKeyRef = useRef("");
+  const remainingQuestionsRef = useRef<QuizItem[]>([]);
   const [activeSessionKey, setActiveSessionKey] = useState(0);
 
   const authMutation = useMutation({
@@ -470,6 +652,18 @@ export default function App() {
     () => normalizeQuestions(questionsQuery.data?.questions ?? []),
     [questionsQuery.data?.questions],
   );
+  const questionGroups = useMemo(
+    () => buildQuestionGroups(allQuestions, QUIZ_PAIRS_PER_ROUND),
+    [allQuestions],
+  );
+  const safeSelectedQuestionGroupIndex = questionGroups.some(
+    (group) => group.index === selectedQuestionGroupIndex,
+  )
+    ? selectedQuestionGroupIndex
+    : 0;
+  const selectedQuestionGroup =
+    questionGroups[safeSelectedQuestionGroupIndex] ?? null;
+  const questionsInSelectedGroup = selectedQuestionGroup?.items ?? [];
 
   const wrongHistorySet = useMemo(
     () => new Set(wrongHistoryIds),
@@ -481,11 +675,22 @@ export default function App() {
 
   const selectablePool = useMemo(() => {
     if (!practiceWrongOnly) {
-      return allQuestions;
+      return questionsInSelectedGroup;
     }
 
-    return allQuestions.filter((item) => wrongHistorySet.has(item.id));
-  }, [allQuestions, practiceWrongOnly, wrongHistorySet]);
+    return questionsInSelectedGroup.filter((item) =>
+      wrongHistorySet.has(item.id),
+    );
+  }, [practiceWrongOnly, questionsInSelectedGroup, wrongHistorySet]);
+  const questionCycleKey = useMemo(
+    () =>
+      buildQuestionCycleKey({
+        categoryId: selectedCategoryId,
+        practiceWrongOnly,
+        pool: selectablePool,
+      }),
+    [practiceWrongOnly, selectablePool, selectedCategoryId],
+  );
 
   const canStartInCurrentMode = selectablePool.length > 0;
 
@@ -583,10 +788,19 @@ export default function App() {
       return;
     }
 
-    const nextSessionQuestions = shuffleArray(selectablePool).slice(
-      0,
-      QUIZ_PAIRS_PER_ROUND,
-    );
+    if (questionCycleKeyRef.current !== questionCycleKey) {
+      questionCycleKeyRef.current = questionCycleKey;
+      remainingQuestionsRef.current = [];
+    }
+
+    const { nextSessionQuestions, nextRemaining } =
+      getNextSessionQuestionsFromPool({
+        pool: selectablePool,
+        previousRemaining: remainingQuestionsRef.current,
+        roundSize: QUIZ_PAIRS_PER_ROUND,
+      });
+
+    remainingQuestionsRef.current = nextRemaining;
     setSessionQuestions(nextSessionQuestions);
     setLeftColumnItems(shuffleArray(nextSessionQuestions));
     setRightColumnItems(shuffleArray(nextSessionQuestions));
@@ -638,6 +852,11 @@ export default function App() {
   }, [userId]);
 
   useEffect(() => {
+    questionCycleKeyRef.current = questionCycleKey;
+    remainingQuestionsRef.current = [];
+  }, [questionCycleKey]);
+
+  useEffect(() => {
     writeWrongIdsForUser(userId, wrongHistoryIds);
   }, [userId, wrongHistoryIds]);
 
@@ -656,6 +875,26 @@ export default function App() {
   }, [categories, selectedCategoryId]);
 
   useEffect(() => {
+    if (questionGroups.length === 0) {
+      setSelectedQuestionGroupIndex(0);
+      return;
+    }
+
+    if (safeSelectedQuestionGroupIndex !== selectedQuestionGroupIndex) {
+      setSelectedQuestionGroupIndex(safeSelectedQuestionGroupIndex);
+    }
+  }, [
+    questionGroups.length,
+    safeSelectedQuestionGroupIndex,
+    selectedQuestionGroupIndex,
+  ]);
+
+  useEffect(() => {
+    resetBoardToIdle();
+  }, [safeSelectedQuestionGroupIndex]);
+
+  useEffect(() => {
+    setSelectedQuestionGroupIndex(0);
     resetBoardToIdle();
     setPracticeWrongOnly(false);
   }, [selectedCategoryId]);
@@ -743,9 +982,11 @@ export default function App() {
         : "Không tải được câu hỏi.";
   } else if (!selectedCategoryId) {
     emptyStateMessage = "Chưa có chủ đề quiz để chơi.";
+  } else if (questionsInSelectedGroup.length === 0) {
+    emptyStateMessage = "Nhóm câu hỏi này hiện chưa có dữ liệu để chơi.";
   } else if (practiceWrongOnly && selectablePool.length === 0) {
     emptyStateMessage =
-      "Chưa có câu sai trong chủ đề này. Hãy chơi chế độ thường trước để lưu ôn sai.";
+      "Chưa có câu sai trong nhóm này. Hãy chơi chế độ thường trước để lưu ôn sai.";
   }
 
   const saveStatusMessage = submitScoreMutation.isPending
@@ -896,8 +1137,18 @@ export default function App() {
         practiceWrongOnly={practiceWrongOnly}
         onTogglePracticeWrongOnly={setPracticeWrongOnly}
         currentPoolCount={selectablePool.length}
-        totalCount={allQuestions.length}
+        totalCount={questionsInSelectedGroup.length}
         wrongHistoryCount={wrongHistoryIds.length}
+      />
+
+      <QuestionGroupTabs
+        groups={questionGroups}
+        selectedGroupIndex={safeSelectedQuestionGroupIndex}
+        onSelect={(groupIndex) => {
+          startTransition(() => {
+            setSelectedQuestionGroupIndex(groupIndex);
+          });
+        }}
       />
 
       <main className={styles.main}>
@@ -906,7 +1157,7 @@ export default function App() {
           <h1 className={styles.title}>Nhớ mặt chữ Hán</h1>
           <p className={styles.subtitle}>
             {selectedCategory
-              ? `Chủ đề hiện tại: ${selectedCategory.title}. Mỗi lượt lấy tối đa ${QUIZ_PAIRS_PER_ROUND} câu ngẫu nhiên. Chọn 1 nghĩa tiếng Việt + 1 chữ Hán để ghép đúng.`
+              ? `Chủ đề hiện tại: ${selectedCategory.title}.${selectedQuestionGroup ? ` ${selectedQuestionGroup.label} đang mở, gồm ${questionsInSelectedGroup.length} câu.` : ""} Học sinh có thể chọn tab theo từng nhóm tối đa ${QUIZ_PAIRS_PER_ROUND} câu rồi bắt đầu làm bài. Chọn 1 nghĩa tiếng Việt + 1 chữ Hán để ghép đúng.`
               : "Chọn một chủ đề để bắt đầu luyện."}
           </p>
         </section>
